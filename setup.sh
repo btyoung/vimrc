@@ -10,9 +10,9 @@ if [ command -v mpython_qx >& /dev/null ]; then
     if [ ! -f ~/.vimrc/mpython_builtins.ini ]; then
         echo '[flake8]' > ~/.vim/mpython_builtins.ini
         echo 'builtins = M,Case,case,' >> ~/.vim/mpython_builtins.ini
-        mpython_qx -c 'import MonteUI; print ",\n".join(name for name in dir(MonteUI.units) if not name.startswith("_")) + ","' >> ~/.vim/mpython_builtins.ini
-        mpython_qx -c 'import MonteUI; print ",\n".join(name for name in dir(MonteUI.command) if not name.startswith("_")) + ","' >> ~/.vim/mpython_builtins.ini
-        mpython_qx -c 'import MonteUI; print ",\n".join(name for name in dir(MonteUI.setup) if not name.startswith("_"))' >> ~/.vim/mpython_builtins.ini
+        mpython_qx -c 'import MonteUI; print "  " + ",\n  ".join(name for name in dir(MonteUI.units) if not name.startswith("_")) + ","' >> ~/.vim/mpython_builtins.ini
+        mpython_qx -c 'import MonteUI; print "  " + ",\n  ".join(name for name in dir(MonteUI.command) if not name.startswith("_")) + ","' >> ~/.vim/mpython_builtins.ini
+        mpython_qx -c 'import MonteUI; print "  " + ",\n  ".join(name for name in dir(MonteUI.setup) if not name.startswith("_"))' >> ~/.vim/mpython_builtins.ini
     fi
 fi
 
