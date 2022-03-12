@@ -393,19 +393,20 @@ function! g:UseIsort(filename)
 endfunction
 
 
-function! g:GetFixers(filename)
+function! g:SetupFixers(filename)
   let fixers = []
   if g:UseBlack(a:filename)
     let fixers = add(fixers, 'black')
+    set textwidth=88
   endif
   if g:UseIsort(a:filename)
     let fixers = add(fixers, 'isort')
   endif
-  return fixers
+  let b:ale_fixers = fixers
 endfunction
 
 
 augroup fixers
   autocmd!
-  autocmd FileType python let b:ale_fixers=g:GetFixers(expand('%'))
+  autocmd FileType python call SetupFixers(expand('%'))
 augroup END
