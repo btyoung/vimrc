@@ -108,6 +108,21 @@ let g:buftabline_numbers=1     " Show buffer number
 let g:buftabline_indicators=1  " Show flag if modified
 
 
+" =============== Autocorrections =====================
+iabbrev ouptuts outputs
+iabbrev ouputs outputs
+iabbrev oututs outputs
+iabbrev ouptut output
+iabbrev ouput output
+iabbrev outut output
+iabbrev Ouptuts Outputs
+iabbrev Ouputs Outputs
+iabbrev Oututs Outputs
+iabbrev Ouptut Output
+iabbrev Ouput Output
+iabbrev Outut Output
+
+
 " =============== File-type specific handling =========================
 augroup configgroup
   " Clear existing autocommands
