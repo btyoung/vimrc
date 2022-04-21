@@ -122,6 +122,8 @@ iabbrev Ouptut Output
 iabbrev Ouput Output
 iabbrev Outut Output
 
+iabbrev improt import
+
 
 " =============== File-type specific handling =========================
 augroup configgroup
