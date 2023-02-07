@@ -180,6 +180,8 @@ nnoremap <silent> <F7> :ToggleAutoFix<CR>
 "  -- Clear white space --
 command! SWS execute ':let _s=@/<Bar>:%s/\s\+$//e<Bar>:let @/=_s<Bar>norm!``'
 
+command! FormatJSON %!python -m json.tool
+
 " "  -- Hard Wrap Toggle --
 let g:wrapmode='c'
 
@@ -344,7 +346,7 @@ let g:ale_python_flake8_options = '--ignore=E,W,F403,F405 --select=F,E999,C90'
 augroup flake8
   autocmd!
   autocmd FileType mpython let b:ale_python_flake8_options =
-    \ '--ignore=E,W,F403,F405 --select=F,E999,C90 --appendconfig '
+    \ '--ignore=E,W,F403,F405 --select=F,E999,C90 --append-config '
     \ .expand('~/.vim/mpython_builtins.ini')
 augroup END
 
@@ -363,69 +365,54 @@ let g:jedi#documentation_command = "<leader>K"
 
 
 " ~~ Use black/isort as needed ~~
-"  1. Use black if ".black", ".autofix", or a "pyproject.toml" with [tool.black]
-"     defined exists in any directory at the current directory or above.
-"  2. Use isort if ".isort", ".autofix", ".isort.cfg", "pyproject.toml" with
-"     [tool.isort], "setup.cfg" with [isort] is in any directory at the current
-"     directory or above.
-"  3. Always use autoimport
-"  4. Add hotkey to enable/disable fixers
+" Use black or isort only if the existing file already has them. Can use <F8> to
+" cycle through comibations. Note that <F7> can be used to disable autofix
 
 
-function! g:UseBlack(filename)
-  let dirname = fnamemodify(a:filename, ":p:h")
-  let root = finddir(".git", dirname . ";")
-  let searchpath = dirname . ';' . root
-
-  if findfile('.black', searchpath) != '' 
-     \ || findfile('.autofix', searchpath) != ''
-    return 1
-  endif
-
-  let pyproject = findfile('pyproject.toml', searchpath)
-  if pyproject != '' && match(readfile(pyproject), '[tool.black]') > -1
-    return 1
-  endif
-endfunction
-
-
-function! g:UseIsort(filename)
-  let dirname = fnamemodify(a:filename, ":p:h")
-  let root = finddir(".git", dirname . ";")
-  let searchpath = dirname . ';' . root
-
-  if findfile('.isort', searchpath) != ''
-    \ || findfile('.autofix', searchpath) != '' 
-    \ || findfile('.isort.cfg', searchpath) != ''
-    return 1
-  endif
-
-  let pyproject = findfile('pyproject.toml', searchpath)
-  if pyproject != '' && match(readfile(pyproject), '[tool.isort]')
-    return 1
-  endif
-
-  let setupcfg = findfile('setup.cfg', searchpath)
-  if setupcfg != '' && match(readfile(setupcfg), '[isort]')
-    return 1
-  endif
-endfunction
-
-
-function! g:SetupFixers(filename)
+function! g:SetupFixers()
   let fixers = []
-  if g:UseBlack(a:filename)
+  let buff = join(getline(1, '$'), "\n") . "\n"  " Add newline to simulate cat
+
+  let output = system("black --check --diff -", buff)
+  if v:shell_error == 0
     let fixers = add(fixers, 'black')
     set textwidth=88
   endif
-  if g:UseIsort(a:filename)
+
+  let output = system("isort --check -", buff)
+  if v:shell_error == 0
     let fixers = add(fixers, 'isort')
   endif
   let b:ale_fixers = fixers
 endfunction
 
+function! g:CycleFixers()
+  if b:ale_fixers == ['black', 'isort']
+    let b:ale_fixers = []
+  elseif b:ale_fixers == []
+    let b:ale_fixers = ['black']
+  elseif b:ale_fixers == ['black']
+    let b:ale_fixers = ['isort']
+  elseif b:ale_fixers == ['isort']
+    let b:ale_fixers = ['black', 'isort']
+  endif
+endfunction
+
+function! g:Fix(name)
+  execute ':ALEFix ' . a:name
+  if index(b:ale_fixers, a:name) < 0
+    let b:ale_fixers = sort(add(b:ale_fixers, a:name))
+  endif
+endfunction
+
+
+command! CycleFixers execute 'call g:CycleFixers()'
+command! Black execute 'call Fix("black")'
+command! Isort execute 'call Fix("isort")'
 
 augroup fixers
   autocmd!
-  autocmd FileType python call SetupFixers(expand('%'))
+  autocmd FileType python,mpython call SetupFixers()
+  autocmd FileType python,mpython inoremap <F8> <C-\><C-O>:CycleFixers<CR>
+  autocmd FileType python,mpython nnoremap <silent> <F8> :CycleFixers<CR>
 augroup END
