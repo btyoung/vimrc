@@ -368,47 +368,90 @@ let g:jedi#documentation_command = "<leader>K"
 " Use black or isort only if the existing file already has them. Can use <F8> to
 " cycle through comibations. Note that <F7> can be used to disable autofix
 
+let g:python_fixers = ['ifix', 'isort', 'black']
+let g:python_fixer_checkers = {
+      \ 'ifix': 'importfixer --check',
+      \ 'black': 'black --check --fast -q -',
+      \ 'isort': 'isort --check -',
+      \}
 
 function! g:SetupFixers()
-  let fixers = []
-  let buff = join(getline(1, '$'), "\n") . "\n"  " Add newline to simulate cat
+  " set to empty list
+  let b:ale_fixers = []
 
-  let output = system("black --check --diff -", buff)
-  if v:shell_error == 0
-    let fixers = add(fixers, 'black')
-    set textwidth=88
-  endif
+  let bufnum = bufnr('%')
+  for fixer in g:python_fixers
+    call job_start(g:python_fixer_checkers[fixer], {
+        \ 'in_mode': 'raw',
+        \ 'exit_cb': function('g:FixerCheckCloseCallback', [fixer]),
+        \ 'in_buf': bufnum,
+        \ 'in_io': 'buffer',
+        \ })
+  endfor
+endfunction
 
-  let output = system("isort --check -", buff)
-  if v:shell_error == 0
-    let fixers = add(fixers, 'isort')
+
+function! g:FixerCheckCloseCallback(fixer, job, status)
+  if a:status == 0
+    call g:AddFixer(a:fixer)
+    if a:fixer == 'black'
+      set textwidth=88
+    endif
   endif
-  let b:ale_fixers = fixers
+endfunction
+
+function! g:AddFixer(fixer)
+  " Add fixer to list while maintaining order
+  let l:fixers = []
+  for available_fixer in g:python_fixers
+    if a:fixer ==# available_fixer || index(b:ale_fixers, available_fixer) >= 0
+      let l:fixers = l:fixers + [available_fixer]
+    endif
+  endfor
+  let b:ale_fixers = l:fixers
 endfunction
 
 function! g:CycleFixers()
-  if b:ale_fixers == ['black', 'isort']
+  if b:ale_fixers == ['ifix', 'black', 'isort']
     let b:ale_fixers = []
   elseif b:ale_fixers == []
+    let b:ale_fixers = ['ifix']
+  elseif b:ale_fixers == ['ifix']
     let b:ale_fixers = ['black']
   elseif b:ale_fixers == ['black']
     let b:ale_fixers = ['isort']
   elseif b:ale_fixers == ['isort']
+    let b:ale_fixers = ['ifix', 'black']
+  elseif b:ale_fixers == ['ifix', 'black']
+    let b:ale_fixers = ['ifix', 'isort']
+  elseif b:ale_fixers == ['ifix', 'isort']
     let b:ale_fixers = ['black', 'isort']
+  elseif b:ale_fixers == ['black', 'isort']
+    let b:ale_fixers = ['ifix', 'black', 'isort']
+  else:
+    let b:ale_fixers = []
   endif
 endfunction
 
 function! g:Fix(name)
   execute ':ALEFix ' . a:name
-  if index(b:ale_fixers, a:name) < 0
-    let b:ale_fixers = sort(add(b:ale_fixers, a:name))
-  endif
+  call AddFixer(a:name)
+endfunction
+
+call ale#fix#registry#Add('ifix', 'ImportFixer', ['python'], 
+                          \ 'import fixer for python')
+
+function! ImportFixer(buffer) abort
+  return {
+        \ 'command': 'importfixer'
+        \}
 endfunction
 
 
 command! CycleFixers execute 'call g:CycleFixers()'
 command! Black execute 'call Fix("black")'
 command! Isort execute 'call Fix("isort")'
+command! Ifix execute 'call Fix("ifix")'
 
 augroup fixers
   autocmd!
