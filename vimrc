@@ -333,7 +333,7 @@ let g:ale_linters = {
   \ 'javascript': ['eslint'],
 \}
 
-let g:ale_fixers = {'javascript': ['prettier']}
+let g:ale_fixers = {'javascript': ['prettier'], 'xml': ['xmllint']}
 
 let g:ale_lint_on_text_changed = 0  " never
 let g:ale_lint_on_insert_leave = 1
@@ -447,6 +447,14 @@ function! ImportFixer(buffer) abort
         \}
 endfunction
 
+function! DoImportFix()
+  if index(b:ale_fixers, "isort") >= 0
+    execute ":ALEFix ifix isort"
+  else
+    execute ":ALEFix ifix"
+  endif
+endfunction
+
 
 command! CycleFixers execute 'call g:CycleFixers()'
 command! Black execute 'call Fix("black")'
@@ -458,4 +466,5 @@ augroup fixers
   autocmd FileType python,mpython call SetupFixers()
   autocmd FileType python,mpython inoremap <F8> <C-\><C-O>:CycleFixers<CR>
   autocmd FileType python,mpython nnoremap <silent> <F8> :CycleFixers<CR>
+  autocmd FileType python,mpython nnoremap <leader>i :call DoImportFix()<CR>
 augroup END
