@@ -305,7 +305,7 @@ let g:server_status = {
       \ 'running': '',
       \ }
 
-function! g:LspStatus()
+function! g:LspStatus() abort
   let l:server_names = lsp#get_allowed_servers(bufnr('%'))
 
   if len(l:server_names) ==# 0
