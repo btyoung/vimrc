@@ -33,10 +33,12 @@ call plug#begin()
   Plug 'jeetsukumaran/vim-buffergator' " Buffer jumping
 
   " Python IDE-type behavior
-  Plug 'davidhalter/jedi-vim'        " Use Jedi to do things
+  " Plug 'davidhalter/jedi-vim'        " Use Jedi to do things
   Plug 'ervandew/supertab'           " Use tab instead of <c-x><c-o>
-  Plug 'dense-analysis/ale'          " Syntax checking
   Plug 'maximbaz/lightline-ale'      " ALE in status line
+  Plug 'prabirshrestha/vim-lsp'
+  Plug 'mattn/vim-lsp-settings'
+  Plug 'rhysd/vim-healthcheck'
 
 call plug#end()
 
@@ -88,8 +90,8 @@ endif
 " Silence bug in vim making first use of py3 silent
 silent! py3 pass
 
-highlight ExtraWhiteSpace ctermbg=234 guibg=#333333
-match ExtraWhiteSpace /\s\+$/
+" highlight ExtraWhiteSpace ctermbg=234 guibg=#333333
+" match ExtraWhiteSpace /\s\+$/
 
 " Fonts
 set termencoding=utf-8
@@ -106,6 +108,22 @@ set autoindent    " Automatically indent
 let g:buftabline_show=1        " Only show if two buffers
 let g:buftabline_numbers=1     " Show buffer number
 let g:buftabline_indicators=1  " Show flag if modified
+
+
+" =============== File-type specific handling =========================
+augroup configgroup
+  " Clear existing autocommands
+  autocmd!
+
+  " Specify file type for mpython files
+  autocmd BufNewFile,BufRead *.mpy set filetype=python
+
+  " Python and mpython setup
+  autocmd FileType python setlocal tabstop=4
+  autocmd FileType python setlocal softtabstop=4
+  autocmd FileType python setlocal shiftwidth=4
+  autocmd FileType python setlocal foldmethod=indent
+augroup END
 
 
 " =============== Autocorrections =====================
@@ -125,34 +143,16 @@ iabbrev Outut Output
 iabbrev improt import
 
 
-" =============== File-type specific handling =========================
-augroup configgroup
-  " Clear existing autocommands
-  autocmd!
-
-  " Specify file type for mpython files
-  au BufNewFile,BufRead *.mpy set filetype=mpython  " Special monte python
-
-  " Python and mpython setup
-  autocmd FileType mpython setlocal syntax=python
-  autocmd FileType python,mpython setlocal tabstop=4
-  autocmd FileType python,mpython setlocal softtabstop=4
-  autocmd FileType python,mpython setlocal shiftwidth=4
-  autocmd FileType python,mpython setlocal foldmethod=indent
-  autocmd FileType mpython setlocal commentstring=#\ %s
-augroup END
-
-
 " ========== Key Mappings and Commands =============
 " Navigate windows using Shift+Arrows
-nmap <silent> <S-Up> :wincmd k<CR>
-nmap <silent> <S-Down> :wincmd j<CR>
-nmap <silent> <S-Left> :wincmd h<CR>
-nmap <silent> <S-Right> :wincmd l<CR>
-nmap <silent> <S-k> :wincmd k<CR>
-nmap <silent> <S-j> :wincmd j<CR>
-nmap <silent> <S-h> :wincmd h<CR>
-nmap <silent> <S-l> :wincmd l<CR>
+" nnoremap <silent> <S-up> :wincmd k<cr>
+" nnoremap <silent> <S-Down> :wincmd j<CR>
+" nnoremap <silent> <S-Left> :wincmd h<CR>
+" nnoremap <silent> <S-Right> :wincmd l<CR>
+" nnoremap <silent> <S-k> :wincmd k<CR>
+" nnoremap <silent> <S-j> :wincmd j<CR>
+" nnoremap <silent> <S-h> :wincmd h<CR>
+" nnoremap <silent> <S-l> :wincmd l<CR>
 
 
 " Shortcuts
@@ -173,18 +173,21 @@ map <Leader> <Plug>(easymotion-prefix)
 nnoremap <C-z> <C-a>
 
 " -- Autofix toggle with F7 --
-inoremap <F7> <C-\><C-O>:ToggleAutoFix<CR>
-nnoremap <silent> <F7> :ToggleAutoFix<CR>
+" inoremap <F7> <C-\><C-O>:ToggleAutoFix<CR>
+" nnoremap <silent> <F7> :ToggleAutoFix<CR>
+nnoremap <silent> fa :call ToggleAutoFix()<CR>
+
 
 " =================== Commands ====================
-"  -- Clear white space --
 command! SWS execute ':let _s=@/<Bar>:%s/\s\+$//e<Bar>:let @/=_s<Bar>norm!``'
-
 command! FormatJSON %!python -m json.tool
+command! ToggleHardWrap execute 'call g:ToggleHardWrap()'
 
-" "  -- Hard Wrap Toggle --
+" -- Personal variables to manage toggle-modes --
 let g:wrapmode='c'
+let g:lsp_auto_format = 1
 
+" -- Hard Wrap Toggle --
 function! g:ToggleHardWrap()
   if g:wrapmode == 'c'
     let g:wrapmode = 'tc'
@@ -211,42 +214,52 @@ endfunction
 
 call g:ApplyWrapMode()
 
-command! ToggleHardWrap execute 'call g:ToggleHardWrap()'
-
+" -- Autoformat Toggle --
 function! g:ToggleAutoFix()
-  if g:ale_fix_on_save
-    let g:ale_fix_on_save=0
+  if g:lsp_auto_format
+    let g:lsp_auto_format = 0
   else
-    let g:ale_fix_on_save=1
+    let g:lsp_auto_format = 1
   endif
 endfunction
-
-command! ToggleAutoFix execute 'call g:ToggleAutoFix()'
 
 
 " =============== Plugin Configuration =======================
 "  ~~ Rainbow Parentheses ~~
 let g:rainbow_active = 1
 let g:rainbow_conf = {
-\    'ctermfgs': ['blue', 'brown', 'yellow', 'gray', 'darkgreen'],
-\    'operators': '_,_',
-\    'parentheses': ['start=/(/ end=/)/ fold', 'start=/\[/ end=/\]/ fold', 'start=/{/ end=/}/ fold'],
-\    'separately': {
-\        '*': {},
-\        'tex': {
-\            'parentheses': ['start=/(/ end=/)/', 'start=/\[/ end=/\]/'],
-\        },
-\        'lisp': {
-\            'guifgs': ['royalblue3', 'darkorange3', 'seagreen3', 'firebrick', 'darkorchid3'],
-\        },
-\        'vim': {
-\            'parentheses': ['start=/(/ end=/)/', 'start=/\[/ end=/\]/', 'start=/{/ end=/}/ fold', 'start=/(/ end=/)/ containedin=vimFuncBody', 'start=/\[/ end=/\]/ containedin=vimFuncBody', 'start=/{/ end=/}/ fold containedin=vimFuncBody'],
-\        },
-\        'html': {
-\            'parentheses': ['start=/\v\<((area|base|br|col|embed|hr|img|input|keygen|link|menuitem|meta|param|source|track|wbr)[ >])@!\z([-_:a-zA-Z0-9]+)(\s+[-_:a-zA-Z0-9]+(\=("[^"]*"|'."'".'[^'."'".']*'."'".'|[^ '."'".'"><=`]*))?)*\>/ end=#</\z1># fold'],
-\        },
-\    }
-\}
+  \ 'ctermfgs': ['blue', 'brown', 'yellow', 'gray', 'darkgreen'],
+  \ 'operators': '_,_',
+  \ 'parentheses': [
+  \   'start=/(/ end=/)/ fold', 
+  \   'start=/\[/ end=/\]/ fold',
+  \   'start=/{/ end=/}/ fold'
+  \ ],
+  \ 'separately': {
+  \   '*': {},
+  \   'tex': {
+  \     'parentheses': ['start=/(/ end=/)/', 'start=/\[/ end=/\]/'],
+  \   },
+  \   'lisp': {
+  \     'guifgs': ['royalblue3', 'darkorange3', 'seagreen3', 'firebrick', 'darkorchid3'],
+  \   },
+  \   'vim': {
+  \     'parentheses': [
+  \       'start=/(/ end=/)/',
+  \       'start=/\[/ end=/\]/',
+  \       'start=/{/ end=/}/ fold',
+  \       'start=/(/ end=/)/ containedin=vimFuncBody',
+  \       'start=/\[/ end=/\]/ containedin=vimFuncBody',
+  \       'start=/{/ end=/}/ fold containedin=vimFuncBody'
+  \      ],
+  \   },
+  \   'html': {
+  \     'parentheses': [
+  \       'start=/\v\<((area|base|br|col|embed|hr|img|input|keygen|link|menuitem|meta|param|source|track|wbr)[ >])@!\z([-_:a-zA-Z0-9]+)(\s+[-_:a-zA-Z0-9]+(\=("[^"]*"|'."'".'[^'."'".']*'."'".'|[^ '."'".'"><=`]*))?)*\>/ end=#</\z1># fold'
+  \     ],
+  \   },
+  \  }
+\ }
 
 
 "  ~~ Lightline status line ~~
@@ -255,14 +268,13 @@ let g:lightline = {
   \ 'active': {
   \   'left': [
   \     ['mode', 'paste'],
-  \     ['readonly', 'filename', 'modified']
-  \    ],
+  \     ['readonly', 'filename', 'modified'],
+  \   ],
   \   'right': [
-  \     ['linter_checking', 'linter_errors', 'linter_warnings',
-  \      'linter_infos', 'linter_ok' ],
+  \     ['lsp'],
   \     ['lineinfo'],
   \     ['percent'],
-  \     ['fileformat', 'fileencoding', 'filetype', 'hardwrap', 'fixer']
+  \     ['fileformat', 'fileencoding', 'filetype', 'hardwrap', 'fmts'],
   \   ],
   \ },
   \ 'component': {
@@ -270,23 +282,10 @@ let g:lightline = {
   \ },
   \ 'component_function': {
   \    'hardwrap': 'HardWrapStatus',
-  \    'fixer': 'FixerStatus',
+  \    'lsp': 'LspStatus',
+  \    'fmts': 'Formatters',
   \ },
-  \ 'component_expand':{
-  \   'linter_checking': 'lightline#ale#checking',
-  \   'linter_infos': 'lightline#ale#infos',
-  \   'linter_warnings': 'lightline#ale#warnings',
-  \   'linter_errors': 'lightline#ale#errors',
-  \   'linter_ok': 'lightline#ale#ok',
-  \ },
-  \ 'component_type': {
-  \   'linter_checking': 'right',
-  \   'linter_infos': 'right',
-  \   'linter_warnings': 'warning',
-  \   'linter_errors': 'error',
-  \   'linter_ok': 'right',
-  \ }
-\}
+\ }
 
 function! g:HardWrapStatus()
   if g:wrapmode == 'c'
@@ -298,173 +297,191 @@ function! g:HardWrapStatus()
   endif
 endfunction
 
+let g:server_status = {
+      \ 'unknown server': '?',
+      \ 'exited': '[x]',
+      \ 'starting': '...',
+      \ 'failed': '!',
+      \ 'running': '',
+      \ }
 
-function! g:FixerStatus()
-  if g:ale_fix_on_save
-    let header = 'autofix'
-  else
-    let header = 'manfix'
-  endif
+function! g:LspStatus()
+  let l:server_names = lsp#get_allowed_servers(bufnr('%'))
 
-  let fixers = []
-  if exists('g:ale_fixers')
-    let fixers += get(g:ale_fixers, &filetype, [])
-  endif
-  if exists('b:ale_fixers')
-    let fixers += b:ale_fixers
-  endif
-
-  if fixers == []
+  if len(l:server_names) ==# 0
     return ''
+  endif
+
+  let l:status_str = ''
+  for l:server_name in l:server_names
+    let l:status = lsp#get_server_status(l:server_name)
+    let l:status_str = l:status_str . " " . l:server_name 
+      \ . g:server_status[l:status] . " "
+  endfor
+
+  let l:counts = lsp#get_buffer_diagnostics_counts()
+  if l:counts['error'] ==# 0 && l:counts['warning'] ==# 0
+    let l:status_str = l:status_str . 'OK'
   else
-    return header . '[' . join(fixers, ',') . ']'
+    let l:status_str = l:status_str . 'E:' . l:counts['error']
+        \ . ' W:' . l:counts['warning']
+  endif
+
+  return l:status_str
+endfunction
+
+function! g:Formatters()
+  if !g:pylsp_cafmt
+    return (g:lsp_auto_format ? 'auto' : 'man')
+  endif
+
+  let l:fmts = ''
+  if exists('b:cafmts')
+    let l:fmts = join(map(b:cafmts, 'v:val[0]'), '')
+  endif
+
+  if l:fmts !=# ''
+    return (g:lsp_auto_format ? 'auto' : 'man') . '[' . l:fmts . ']'
+  else
+    return 'nofix'
   endif
 endfunction
 
 
-
-"  ~~ ALE Configuration ~~
-let g:ale_linter_aliases = {'mpython': 'python'}
-let g:ale_completion_enabled = 1
-
-let g:ale_linters = {
-  \ 'python': ['flake8'],
-  \ 'mpython': ['flake8'],
-  \ 'javascript': ['eslint'],
-\}
-
-let g:ale_fixers = {'javascript': ['prettier'], 'xml': ['xmllint']}
-
-let g:ale_lint_on_text_changed = 0  " never
-let g:ale_lint_on_insert_leave = 1
-let g:ale_fix_on_save = 1
-
-" Ignore errors and awarnings
-"  Ignore F403 and 405, which are undefined name with import *, and use of *.
-"  You know you shouldn't you don't need to be nagged
-let g:ale_python_flake8_options = '--ignore=E,W,F403,F405 --select=F,E999,C90'
-augroup flake8
-  autocmd!
-  autocmd FileType mpython let b:ale_python_flake8_options =
-    \ '--ignore=E,W,F403,F405 --select=F,E999,C90 --append-config '
-    \ .expand('~/.vim/mpython_builtins.ini')
-augroup END
-
-
-" ~~ Jedi configuration ~~
-autocmd FileType python,mpython setlocal completeopt-=preview
-let g:jedi#popup_on_dot = 0
-let g:jedi#show_call_signatures = 2
-set noshowmode
-let g:jedi#squelch_py_warning = 1
-let g:jedi#smart_auto_mappings = 0
-let g:SuperTabDefaultCompletionType = 'context'
-set completeopt=menuone,longest
-
-let g:jedi#documentation_command = "<leader>K"
-
-
-" ~~ Use black/isort as needed ~~
-" Use black or isort only if the existing file already has them. Can use <F8> to
-" cycle through comibations. Note that <F7> can be used to disable autofix
-
-let g:python_fixers = ['ifix', 'isort', 'black']
-let g:python_fixer_checkers = {
-      \ 'ifix': 'importfixer --check',
-      \ 'black': 'black --check --fast -q -',
-      \ 'isort': 'isort --check -',
-      \}
-
-function! g:SetupFixers()
-  " set to empty list
-  let b:ale_fixers = []
-
-  let bufnum = bufnr('%')
-  for fixer in g:python_fixers
-    call job_start(g:python_fixer_checkers[fixer], {
-        \ 'in_mode': 'raw',
-        \ 'exit_cb': function('g:FixerCheckCloseCallback', [fixer]),
-        \ 'in_buf': bufnum,
-        \ 'in_io': 'buffer',
+" === LSP settings ===
+if executable('pylsp')
+  autocmd User lsp_setup call lsp#register_server({
+        \ 'name': 'pylsp',
+        \ 'allowlist': ['python'],
+        \ 'cmd': {server_info->['pylsp']},
+        \ 'workspace_config': {
+        \   'pylsp': {'plugins': {'flake8': {'enabled': v:true}}}
+        \ },
         \ })
-  endfor
+endif
+
+
+function! s:set_up_cafmt() abort
+  function! s:handle_cafmt_query(bufnr, data)
+    let l:response = get(a:data, 'response', {})
+    if get(l:response['result'], 'linelength', 0) !=# 0
+      call setbufvar(a:bufnr, 'textwidth', l:response['result']['line-length'])
+    endif
+    call setbufvar(a:bufnr, 'cafmts', l:response['result']['formatters'])
+  endfunction
+
+  command! CafQuery call lsp#send_request('pylsp', {
+        \ 'method': 'workspace/executeCommand',
+        \ 'params': {
+        \     'command': 'cafmt.query',
+        \     'arguments': {
+        \         'doc_uri': lsp#utils#get_buffer_uri(bufnr('%')),
+        \     },
+        \ },
+        \ 'sync': 0,
+        \ 'on_notification': function('s:handle_cafmt_query', [bufnr('%')]),
+        \ })
+
+  command! CafCycle call lsp#send_request('pylsp', {
+        \ 'method': 'workspace/executeCommand',
+        \ 'params': {
+        \     'command': 'cafmt.cycle',
+        \     'arguments': {
+        \         'doc_uri': lsp#utils#get_buffer_uri(bufnr('%')),
+        \     },
+        \ },
+        \ 'sync': 1,
+        \ 'on_notification': function('s:handle_cafmt_query', [bufnr('%')]),
+        \ })
+
+  command! -nargs=1 CafApply call lsp#send_request('pylsp', {
+        \ 'method': 'workspace/executeCommand',
+        \ 'params': {
+        \     'command': 'cafmt.apply',
+        \     'arguments': {
+        \         'doc_uri': lsp#utils#get_buffer_uri(bufnr('%')),
+        \         'format': <f-args>,
+        \     },
+        \ },
+        \ 'sync': 0,
+        \ 'on_notification': function('s:handle_cafmt_query', [bufnr('%')]),
+        \ })
 endfunction
 
 
-function! g:FixerCheckCloseCallback(fixer, job, status)
-  if a:status == 0
-    call g:AddFixer(a:fixer)
-    if a:fixer == 'black'
-      set textwidth=88
+
+function! s:autoformat()
+  if g:lsp_auto_format
+    call execute('LspDocumentFormatSync')
+  endif
+endfunction
+
+function! s:on_lsp_buffer_enabled() abort
+  setlocal omnifunc=lsp#complete
+  setlocal signcolumn=yes
+  if exists('+tagfunc') | setlocal tagfunc=lsp#tagfunc | endif
+  nmap <silent> <buffer> ff :call execute('LspDocumentFormat')<CR>
+  nmap <buffer> gd <plug>(lsp-definition)
+  nmap <buffer> gs <plug>(lsp-document-symbol-search)
+  nmap <buffer> gS <plug>(lsp-worskspace-symbol-search)
+  nmap <buffer> gr <plug>(lsp-references)
+  nmap <buffer> gi <plug>(lsp-implementation)
+  nmap <buffer> gt <plug>(lsp-type-definition)
+  nmap <buffer> <leader>rn <plug>(lsp-rename)
+  nmap <buffer> [g <plug>(lsp-previous-diagnostic)
+  nmap <buffer> ]g <plug>(lsp-next-diagonstic)
+  nmap <buffer> K <plug>(lsp-hover)
+  nnoremap <buffer> <expr><c-f> lsp#scroll(+4)
+  nnoremap <buffer> <expr><c-d> lsp#scroll(-4)
+
+  call s:detect_pylsp_cafmt()
+  if g:pylsp_cafmt
+    call execute('CafQuery')
+    nmap <silent> <buffer> fc :call execute('CafCycle')<CR>
+    nmap <silent> <buffer> fb :call execute('CafApply black')<CR>
+    nmap <silent> <buffer> fi :call execute('CafApply isort')<CR>
+  endif
+
+  let g:lsp_format_sync_timeout = 1000
+  " autocmd! BufWritePre *.py,*.mpy call s:autoformat()
+  autocmd! BufWritePre * call s:autoformat()
+ " execute('LspDocumentFormatSync)
+
+endfunction
+
+let g:pylsp_cafmt = v:null
+function! s:detect_pylsp_cafmt() 
+  if g:pylsp_cafmt is v:null
+    let l:cap = lsp#get_server_capabilities('pylsp')
+    if len(l:cap) >= 0
+      let l:cmds = get(l:cap['executeCommandProvider'], 'commands', [])
+      let g:pylsp_cafmt = len(filter(l:cmds, 'v:val[:5] ==# "cafmt."')) > 0
+      if g:pylsp_cafmt
+        call s:set_up_cafmt()
+      endif
     endif
   endif
 endfunction
 
-function! g:AddFixer(fixer)
-  " Add fixer to list while maintaining order
-  let l:fixers = []
-  for available_fixer in g:python_fixers
-    if a:fixer ==# available_fixer || index(b:ale_fixers, available_fixer) >= 0
-      let l:fixers = l:fixers + [available_fixer]
-    endif
-  endfor
-  let b:ale_fixers = l:fixers
-endfunction
+let g:lsp_diagnostics_enabled=1
+" Echo shows to status line, float shows a window, virtualtext shows in-line
+let g:lsp_diagnostics_echo_cursor=1
+let g:lsp_diagnostics_echo_delay=150
+let g:lsp_diagnostics_float_cursor=0
+let g:lsp_diagnostics_highlights_enabled=0
+let g:lsp_diagnostics_signs_enabled=1
+let g:lsp_diagnostics_signs_delay=150
+let g:lsp_diagnostics_virtual_text_enabled=0
+let g:lsp_diagnostics_virtual_text_delay=150
+let g:lsp_diagnostics_virtual_text_prefix='#> '
+let g:lsp_diagnostics_virtual_text_align='after'
+let g:lsp_diagnostics_virtual_text_wrap='truncate'
+let g:lsp_diagnostics_virtual_text_padding_left=2
+let g:lsp_inlay_hints_enabled=1
+let g:lsp_show_message_log_level='log'
+let g:lsp_log_file=expand('~/vim-lsp.log')
 
-function! g:CycleFixers()
-  if b:ale_fixers == ['ifix', 'black', 'isort']
-    let b:ale_fixers = []
-  elseif b:ale_fixers == []
-    let b:ale_fixers = ['ifix']
-  elseif b:ale_fixers == ['ifix']
-    let b:ale_fixers = ['black']
-  elseif b:ale_fixers == ['black']
-    let b:ale_fixers = ['isort']
-  elseif b:ale_fixers == ['isort']
-    let b:ale_fixers = ['ifix', 'black']
-  elseif b:ale_fixers == ['ifix', 'black']
-    let b:ale_fixers = ['ifix', 'isort']
-  elseif b:ale_fixers == ['ifix', 'isort']
-    let b:ale_fixers = ['black', 'isort']
-  elseif b:ale_fixers == ['black', 'isort']
-    let b:ale_fixers = ['ifix', 'black', 'isort']
-  else:
-    let b:ale_fixers = []
-  endif
-endfunction
-
-function! g:Fix(name)
-  execute ':ALEFix ' . a:name
-  call AddFixer(a:name)
-endfunction
-
-call ale#fix#registry#Add('ifix', 'ImportFixer', ['python'], 
-                          \ 'import fixer for python')
-
-function! ImportFixer(buffer) abort
-  return {
-        \ 'command': 'importfixer'
-        \}
-endfunction
-
-function! DoImportFix()
-  if index(b:ale_fixers, "isort") >= 0
-    execute ":ALEFix ifix isort"
-  else
-    execute ":ALEFix ifix"
-  endif
-endfunction
-
-
-command! CycleFixers execute 'call g:CycleFixers()'
-command! Black execute 'call Fix("black")'
-command! Isort execute 'call Fix("isort")'
-command! Ifix execute 'call Fix("ifix")'
-
-augroup fixers
-  autocmd!
-  autocmd FileType python,mpython call SetupFixers()
-  autocmd FileType python,mpython inoremap <F8> <C-\><C-O>:CycleFixers<CR>
-  autocmd FileType python,mpython nnoremap <silent> <F8> :CycleFixers<CR>
-  autocmd FileType python,mpython nnoremap <leader>i :call DoImportFix()<CR>
+augroup lsp_install
+  au!
+  autocmd User lsp_buffer_enabled call s:on_lsp_buffer_enabled()
 augroup END
