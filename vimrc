@@ -355,7 +355,16 @@ if executable('pylsp')
         \ 'allowlist': ['python'],
         \ 'cmd': {server_info->['pylsp']},
         \ 'workspace_config': {
-        \   'pylsp': {'plugins': {'flake8': {'enabled': v:true}}}
+        \   'pylsp': {
+        \     'plugins': {
+        \       'pycodestyle': {'enabled': v:false},
+        \       'flake8': {
+        \         'enabled': v:true,
+        \         'ignore': ['E', 'W', 'F403', 'F405'],
+        \         'select': ['F', 'E999', 'C90'],
+        \       }
+        \     }
+        \   }
         \ },
         \ })
 endif
@@ -467,7 +476,7 @@ let g:lsp_diagnostics_enabled=1
 " Echo shows to status line, float shows a window, virtualtext shows in-line
 let g:lsp_diagnostics_echo_cursor=1
 let g:lsp_diagnostics_echo_delay=150
-let g:lsp_diagnostics_float_cursor=0
+let g:lsp_diagnostics_float_cursor=1
 let g:lsp_diagnostics_highlights_enabled=0
 let g:lsp_diagnostics_signs_enabled=1
 let g:lsp_diagnostics_signs_delay=150
