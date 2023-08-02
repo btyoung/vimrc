@@ -37,11 +37,10 @@ call plug#begin()
   Plug 'ervandew/supertab'           " Use tab instead of <c-x><c-o>
   Plug 'maximbaz/lightline-ale'      " ALE in status line
   Plug 'prabirshrestha/vim-lsp'
-  Plug 'mattn/vim-lsp-settings'
+  " Plug 'mattn/vim-lsp-settings'
   Plug 'rhysd/vim-healthcheck'
 
 call plug#end()
-
 
 " NOTES on python:
 " - ale is used for syntax checking and fixing. It will shell out to 'flake8',
@@ -183,6 +182,8 @@ command! SWS execute ':let _s=@/<Bar>:%s/\s\+$//e<Bar>:let @/=_s<Bar>norm!``'
 command! FormatJSON %!python -m json.tool
 command! ToggleHardWrap execute 'call g:ToggleHardWrap()'
 
+let g:SuperTabDefaultCompletionType = 'context'
+
 " -- Personal variables to manage toggle-modes --
 let g:wrapmode='c'
 let g:lsp_auto_format = 1
@@ -303,6 +304,7 @@ let g:server_status = {
       \ 'starting': '...',
       \ 'failed': '!',
       \ 'running': '',
+      \ 'not running': '?',
       \ }
 
 function! g:LspStatus() abort
@@ -369,14 +371,31 @@ if executable('pylsp')
         \ })
 endif
 
+let g:lsp_settings = {
+  \ 'pylsp': {
+  \ 'workspace_config': {
+  \   'pylsp': {
+  \     'plugins': {
+  \       'pycodestyle': {'enabled': v:false},
+  \       'flake8': {
+  \         'enabled': v:true,
+  \         'ignore': ['E', 'W', 'F403', 'F405'],
+  \         'select': ['F', 'E999', 'C90'],
+  \       }
+  \     }
+  \   }
+  \ },
+  \ }
+  \ }
+
 
 function! s:set_up_cafmt() abort
   function! s:handle_cafmt_query(bufnr, data)
     let l:response = get(a:data, 'response', {})
-    if get(l:response['result'], 'linelength', 0) !=# 0
-      call setbufvar(a:bufnr, 'textwidth', l:response['result']['line-length'])
-    endif
     call setbufvar(a:bufnr, 'cafmts', l:response['result']['formatters'])
+    if get(l:response['result'], 'line-length', 0) !=# 0
+      let &textwidth = l:response['result']['line-length']
+    endif
   endfunction
 
   command! CafQuery call lsp#send_request('pylsp', {
@@ -480,6 +499,7 @@ let g:lsp_diagnostics_float_cursor=1
 let g:lsp_diagnostics_highlights_enabled=0
 let g:lsp_diagnostics_signs_enabled=1
 let g:lsp_diagnostics_signs_delay=150
+let g:lsp_diagnostics_signs_priority=15
 let g:lsp_diagnostics_virtual_text_enabled=0
 let g:lsp_diagnostics_virtual_text_delay=150
 let g:lsp_diagnostics_virtual_text_prefix='#> '
@@ -487,8 +507,10 @@ let g:lsp_diagnostics_virtual_text_align='after'
 let g:lsp_diagnostics_virtual_text_wrap='truncate'
 let g:lsp_diagnostics_virtual_text_padding_left=2
 let g:lsp_inlay_hints_enabled=1
-let g:lsp_show_message_log_level='log'
-let g:lsp_log_file=expand('~/vim-lsp.log')
+" let g:lsp_settings_servers_dir=expand('$HOME/.vim-lsp/servers')
+" let g:lsp_show_message_log_level='log'
+" let g:lsp_log_file=expand('~/vim-lsp.log')
+"
 
 augroup lsp_install
   au!
