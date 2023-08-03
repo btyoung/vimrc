@@ -360,6 +360,7 @@ if executable('pylsp')
         \   'pylsp': {
         \     'plugins': {
         \       'pycodestyle': {'enabled': v:false},
+        \       'pyflakes': {'enabled': v:false},
         \       'flake8': {
         \         'enabled': v:true,
         \         'ignore': ['E', 'W', 'F403', 'F405'],
@@ -495,10 +496,10 @@ let g:lsp_diagnostics_enabled=1
 " Echo shows to status line, float shows a window, virtualtext shows in-line
 let g:lsp_diagnostics_echo_cursor=1
 let g:lsp_diagnostics_echo_delay=150
-let g:lsp_diagnostics_float_cursor=1
+let g:lsp_diagnostics_float_cursor=0
 let g:lsp_diagnostics_highlights_enabled=0
 let g:lsp_diagnostics_signs_enabled=1
-let g:lsp_diagnostics_signs_delay=150
+let g:lsp_diagnostics_signs_delay=10
 let g:lsp_diagnostics_signs_priority=15
 let g:lsp_diagnostics_virtual_text_enabled=0
 let g:lsp_diagnostics_virtual_text_delay=150
@@ -511,6 +512,9 @@ let g:lsp_inlay_hints_enabled=1
 " let g:lsp_show_message_log_level='log'
 " let g:lsp_log_file=expand('~/vim-lsp.log')
 "
+hi LspErrorText ctermbg=131
+hi LspErrorLine ctermbg=52
+
 
 augroup lsp_install
   au!
