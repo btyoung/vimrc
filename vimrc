@@ -176,6 +176,17 @@ nnoremap <C-z> <C-a>
 " nnoremap <silent> <F7> :ToggleAutoFix<CR>
 nnoremap <silent> fa :call ToggleAutoFix()<CR>
 
+" -- convert to fstring --
+"  These set mark z, select the inner "/' (which is more repeatable than outer),
+"  go to the beginning (o), go into normal mode, go back one (h), insert an f
+"  (if), go back to normal mode, and return to mark, and then go one over (l).
+nnoremap <Plug>FstringConvertDouble mzvi"o<Esc>hif<Esc>`zl
+      \:call repeat#set("\<Plug>FstringConvertDouble")<CR>
+nmap <Plug>FstringConvertSingle mzvi'o<Esc>hif<Esc>`zl 
+      \:call repeat#set("\<Plug>FstringConvertSingle")<CR>
+nmap fc' <Plug>FstringConvertSingle
+nmap fc" <Plug>FstringConvertDouble
+
 
 " =================== Commands ====================
 command! SWS execute ':let _s=@/<Bar>:%s/\s\+$//e<Bar>:let @/=_s<Bar>norm!``'
@@ -371,6 +382,7 @@ if executable('pylsp')
         \ },
         \ })
 endif
+        " \ 'cmd': ['pylsp', '-vv', '--log-file', '/home/byoung/pylsp.log'],
 
 let g:lsp_settings = {
   \ 'pylsp': {
@@ -437,6 +449,44 @@ function! s:set_up_cafmt() abort
         \ })
 endfunction
 
+function! s:set_up_importfixer() abort
+  command! RemoveAllUnusedImports call lsp#send_request('pylsp', {
+        \ 'method': 'workspace/executeCommand',
+        \ 'params': {
+        \   'command': 'importfixer.fixAll.removeAllUnusedImports',
+        \   'arguments': {
+        \     'doc_uri': lsp#utils#get_buffer_uri(bufnr('%')),
+        \   },
+        \ },
+        \ 'sync': 0,
+        \ })
+
+  command! -nargs=1 RemoveImport call lsp#send_request('pylsp', {
+        \ 'method': 'workspace/executeCommand',
+        \ 'params': {
+        \   'command': 'importfixer.quickfix.removeimport',
+        \   'arguments': {
+        \     'doc_uri': lsp#utils#get_buffer_uri(bufnr('%')),
+        \     'import': <f-args>,
+        \   },
+        \ },
+        \ 'sync': 0,
+        \ })
+
+  command! -nargs=1 AddImport call lsp#send_request('pylsp', {
+        \ 'method': 'workspace/executeCommand',
+        \ 'params': {
+        \   'command': 'importfixer.quickfix.addimport',
+        \   'arguments': {
+        \     'doc_uri': lsp#utils#get_buffer_uri(bufnr('%')),
+        \     'import': <f-args>,
+        \   },
+        \ },
+        \ 'sync': 0,
+        \ })
+
+endfunction
+
 
 
 function! s:autoformat()
@@ -450,6 +500,7 @@ function! s:on_lsp_buffer_enabled() abort
   setlocal signcolumn=yes
   if exists('+tagfunc') | setlocal tagfunc=lsp#tagfunc | endif
   nmap <silent> <buffer> ff :call execute('LspDocumentFormat')<CR>
+  nmap <buffer> ca <plug>(lsp-code-action)
   nmap <buffer> gd <plug>(lsp-definition)
   nmap <buffer> gs <plug>(lsp-document-symbol-search)
   nmap <buffer> gS <plug>(lsp-worskspace-symbol-search)
@@ -463,12 +514,16 @@ function! s:on_lsp_buffer_enabled() abort
   nnoremap <buffer> <expr><c-f> lsp#scroll(+4)
   nnoremap <buffer> <expr><c-d> lsp#scroll(-4)
 
-  call s:detect_pylsp_cafmt()
+  call s:detect_pylsp_plugins()
   if g:pylsp_cafmt
     call execute('CafQuery')
     nmap <silent> <buffer> fc :call execute('CafCycle')<CR>
     nmap <silent> <buffer> fb :call execute('CafApply black')<CR>
     nmap <silent> <buffer> fi :call execute('CafApply isort')<CR>
+  endif
+
+  if g:pylsp_importfixer
+    nmap <silent> <buffer> gx :call execute('RemoveAllUnusedImports')<CR>
   endif
 
   let g:lsp_format_sync_timeout = 1000
@@ -479,18 +534,29 @@ function! s:on_lsp_buffer_enabled() abort
 endfunction
 
 let g:pylsp_cafmt = v:null
-function! s:detect_pylsp_cafmt() 
+let g:pylsp_importfixer = v:null
+function! s:detect_pylsp_plugins() 
   if g:pylsp_cafmt is v:null
     let l:cap = lsp#get_server_capabilities('pylsp')
     if len(l:cap) >= 0
       let l:cmds = get(l:cap['executeCommandProvider'], 'commands', [])
-      let g:pylsp_cafmt = len(filter(l:cmds, 'v:val[:5] ==# "cafmt."')) > 0
+
+      echom l:cmds
+      let g:pylsp_cafmt = len(filter(copy(l:cmds), 'v:val[:5] ==# "cafmt."')) > 0
       if g:pylsp_cafmt
         call s:set_up_cafmt()
       endif
+
+      echom l:cmds
+      let g:pylsp_importfixer = len(filter(copy(l:cmds), 'v:val[:11] ==# "importfixer."')) > 0
+      if g:pylsp_importfixer 
+        call s:set_up_importfixer()
+      endif
+
     endif
   endif
 endfunction
+
 
 let g:lsp_diagnostics_enabled=1
 " Echo shows to status line, float shows a window, virtualtext shows in-line
@@ -501,6 +567,7 @@ let g:lsp_diagnostics_highlights_enabled=0
 let g:lsp_diagnostics_signs_enabled=1
 let g:lsp_diagnostics_signs_delay=10
 let g:lsp_diagnostics_signs_priority=15
+let g:lsp_document_code_action_signs_priority=16
 let g:lsp_diagnostics_virtual_text_enabled=0
 let g:lsp_diagnostics_virtual_text_delay=150
 let g:lsp_diagnostics_virtual_text_prefix='#> '
@@ -508,12 +575,16 @@ let g:lsp_diagnostics_virtual_text_align='after'
 let g:lsp_diagnostics_virtual_text_wrap='truncate'
 let g:lsp_diagnostics_virtual_text_padding_left=2
 let g:lsp_inlay_hints_enabled=1
+let g:lsp_code_action_ui='float'
+let g:lsp_document_highlight_enabled=1
+let g:lsp_document_highlight_delay=150
 " let g:lsp_settings_servers_dir=expand('$HOME/.vim-lsp/servers')
 " let g:lsp_show_message_log_level='log'
 " let g:lsp_log_file=expand('~/vim-lsp.log')
 "
 hi LspErrorText ctermbg=131
 hi LspErrorLine ctermbg=52
+hi lspReference ctermbg=240
 
 
 augroup lsp_install
