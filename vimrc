@@ -30,7 +30,7 @@ call plug#begin()
   Plug 'itchyny/lightline.vim'       " Status bar
   Plug 'ap/vim-buftabline'           " Show buffers
   Plug 'airblade/vim-gitgutter'      " Git data
-  Plug 'jeetsukumaran/vim-buffergator' " Buffer jumping
+  " Plug 'jeetsukumaran/vim-buffergator' " Buffer jumping
 
   " Python IDE-type behavior
   " Plug 'davidhalter/jedi-vim'        " Use Jedi to do things
@@ -39,6 +39,7 @@ call plug#begin()
   Plug 'prabirshrestha/vim-lsp'
   " Plug 'mattn/vim-lsp-settings'
   Plug 'rhysd/vim-healthcheck'
+  Plug 'dense-analysis/ale'          " Syntax checking
 
 call plug#end()
 
@@ -360,6 +361,13 @@ function! g:Formatters()
   endif
 endfunction
 
+let g:ale_linters = {'javascript': ['eslint'], 'javascriptreact': ['eslint']}
+let g:ale_fixers = {'javascript': ['prettier'], 'javascriptreact': ['prettier']}
+
+let g:ale_lint_on_text_changed = 0  " never
+let g:ale_lint_on_insert_leave = 1
+let g:ale_fix_on_save = 0
+
 
 " === LSP settings ===
 if executable('pylsp')
@@ -382,6 +390,28 @@ if executable('pylsp')
         \ },
         \ })
 endif
+" if executable('typescript-language-server')
+"   autocmd User lsp_setup call lsp#register_server({
+"         \ 'name': 'jslsp',
+"         \ 'cmd': ['typescript-langauge-server', '--stdio'],
+"         \ 'initialization_options': {
+"         \   'preferences': {
+"         \     'includeInlayParameterNameHintsWhenArgumentMatchesName': v:true,
+"         \     'includeInlayParameterNameHints': 'all',
+"         \     'includeInlayVariableTypeHints': v:true,
+"         \     'includeInlayPropertyDeclarationTypeHints': v:true,
+"         \     'includeInlayFunctionParameterTypeHints': v:true,
+"         \     'includeInlayEnumMemberValueHints': v:true,
+"         \     'includeInlayFunctionLikeReturnTypeHints': v:true
+"         \   },
+"         \ },
+"         \ 'allowlist': ['javascript', 'javascriptreact', 'typescript', 'typescriptreact', 'typescript.tsx'],
+"         \ 'blocklist': [],
+"         \ 'config': {},
+"         \ 'workspace_config': {},
+"         \ 'semantic_highlight': {},
+"       \ })
+" endif
         " \ 'cmd': ['pylsp', '-vv', '--log-file', '/home/byoung/pylsp.log'],
 
 let g:lsp_settings = {
@@ -493,6 +523,10 @@ function! s:autoformat()
   if g:lsp_auto_format
     call execute('LspDocumentFormatSync')
   endif
+  if count(['javascript', 'javascriptreact'], &ft) > 0
+    echom 'whoo'
+    call execute('ALEFix')
+  endif
 endfunction
 
 function! s:on_lsp_buffer_enabled() abort
@@ -528,10 +562,12 @@ function! s:on_lsp_buffer_enabled() abort
 
   let g:lsp_format_sync_timeout = 1000
   " autocmd! BufWritePre *.py,*.mpy call s:autoformat()
-  autocmd! BufWritePre * call s:autoformat()
+  " autocmd! BufWritePre * call s:autoformat()
  " execute('LspDocumentFormatSync)
 
 endfunction
+
+autocmd! BufWritePre * call s:autoformat()
 
 let g:pylsp_cafmt = v:null
 let g:pylsp_importfixer = v:null
@@ -574,10 +610,10 @@ let g:lsp_diagnostics_virtual_text_prefix='#> '
 let g:lsp_diagnostics_virtual_text_align='after'
 let g:lsp_diagnostics_virtual_text_wrap='truncate'
 let g:lsp_diagnostics_virtual_text_padding_left=2
-let g:lsp_inlay_hints_enabled=1
+let g:lsp_inlay_hints_enabled=0
 let g:lsp_code_action_ui='float'
 let g:lsp_document_highlight_enabled=1
-let g:lsp_document_highlight_delay=150
+let g:lsp_document_highlight_delay=1000
 " let g:lsp_settings_servers_dir=expand('$HOME/.vim-lsp/servers')
 " let g:lsp_show_message_log_level='log'
 " let g:lsp_log_file=expand('~/vim-lsp.log')
